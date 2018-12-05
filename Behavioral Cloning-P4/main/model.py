@@ -59,10 +59,8 @@ class Model(object):
             right_image = cv2.imread(nameright)
             right_image = right_image.reshape((1,) + right_image.shape)
 
-
             # flip each image
             image_flipped = np.fliplr(center_image)
-            #print(image_flipped.shape)
 
             return np.vstack((center_image, image_flipped, left_image, right_image))
 
@@ -83,23 +81,7 @@ class Model(object):
 
                     images = np.vstack([loadImages(batch_sample) for batch_sample in  batch_samples])
                     angles = np.vstack([loadSteering(batch_sample) for batch_sample in  batch_samples])
-                    #images = []
-                    #angles = []
-                    #for batch_sample in batch_samples:
-                    #    name = os.path.join( self.basepath, "IMG", batch_sample[0].split('/')[-1])
-                    #    center_image = cv2.imread(name)
-                    #    #print(name)
-                    #    #print(center_image.shape)
 
-                    #    center_angle = float(batch_sample[1])
-                    #    images.append(center_image)
-                    #    angles.append(center_angle)
-
-                    #    # flip each image
-                    #    image_flipped = np.fliplr(center_image)
-                    #    measurement_flipped = -center_angle
-                    #    images.append(image_flipped)
-                    #    angles.append(measurement_flipped)
 
                     # X_train = np.array(angles)
                     X_train = images
@@ -108,6 +90,7 @@ class Model(object):
                     yield sklearn.utils.shuffle(X_train, y_train)
 
         train_samples, validation_samples = train_test_split(samples, test_size=0.2)
+
         # compile and train the model using the generator function
         train_generator = generator(train_samples, batch_size=batch_size)
         validation_generator = generator(validation_samples, batch_size=batch_size)
@@ -116,11 +99,6 @@ class Model(object):
 
         self.model.fit_generator(train_generator, samples_per_epoch=len(train_samples), validation_data=validation_generator,
                             nb_val_samples=len(validation_samples), nb_epoch=epochs)
-        """
-        If the above code throw exceptions, try 
-        model.fit_generator(train_generator, steps_per_epoch= len(train_samples),
-        validation_data=validation_generator, validation_steps=len(validation_samples), epochs=5, verbose = 1)
-        """
 
 
     def save(self, filename="model.h5"):
