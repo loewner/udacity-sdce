@@ -55,9 +55,9 @@ public:
 	  std::map<tuple<int, int>, vector<double>> parameter_JMP;
 
 	  // For converting back and forth between radians and degrees.
-		constexpr double pi() { return M_PI; }
-		double deg2rad(double x) { return x * pi() / 180; }
-		double rad2deg(double x) { return x * 180 / pi(); }
+//		constexpr double pi() { return M_PI; }
+//		double deg2rad(double x) { return x * pi() / 180; }
+//		double rad2deg(double x) { return x * 180 / pi(); }
 
 	  /**
 	  * Constructor
@@ -71,31 +71,33 @@ public:
 	  */
 	  virtual ~Vehicle();
 
-	  /**
-	   * returns a trajectory of going straight
-	   */
-	  void drive2(vector<double> speed, vector<double> d);
+	  // set the current begin path (this is more precise than this->s)
 	  void set_begin_path_s();
+	  // set the lane speeds based on other vehicles on the road
 	  void set_lane_speeds();
+	  // set target speed
 	  void set_target_speed();
-
-	  void start_piloted_driving();
-	  void follow();
+	  // find closest vehicles in a lane
 	  tuple<vector<double>,vector<int>> closest_dist_in_lane(int lane);
 
+
+	  void start_piloted_driving();
+
+	  // methods for trajectory planning
+	  void follow();
+	  void change_lane(string next_state);
+	  void drive2(vector<double> speed, vector<double> d);
+	  vector<double> compute_paramteters_JMP(vector <double> start, vector <double> end, double T);
+	  double eval_JMP( double x, vector<double> params);
+
+	  // bahaviour planning
 	  vector<string> get_successor_states();
 	  void set_target_state(vector<string> states);
 	  vector<double> inefficiency_cost();
 	  vector<double> safety_cost();
 
+	  // other
 	  double curvature(double s);
-
-	  /**
-	   * returns the coefficients of the jerk minimizing polynomial
-	   */
-	  vector<double> compute_paramteters_JMP(vector <double> start, vector <double> end, double T);
-	  double eval_JMP( double x, vector<double> params);
-
 	  /**
 	   * retruns the current lane
 	   *

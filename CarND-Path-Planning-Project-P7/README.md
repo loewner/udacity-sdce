@@ -1,74 +1,73 @@
 # CarND-Path-Planning-Project
 Self-Driving Car Engineer Nanodegree Program
-   
-### Simulator.
+
+## getting started
+### how to build
+
+1. Clone this repo.
+2. Make a build directory: `mkdir build && cd build`
+3. Compile: `cmake ../src && make`
+4. Run it: `./path_planning`.
+
+### run the simulator
 You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab (https://github.com/udacity/self-driving-car-sim/releases/tag/T3_v1.2).
 
-### Goals
-In this project your goal is to safely navigate around a virtual highway with other traffic that is driving +-10 MPH of the 50 MPH speed limit. You will be provided the car's localization and sensor fusion data, there is also a sparse map list of waypoints around the highway. The car should try to go as close as possible to the 50 MPH speed limit, which means passing slower traffic when possible, note that other cars will try to change lanes too. The car should avoid hitting other cars at all cost as well as driving inside of the marked road lanes at all times, unless going from one lane to another. The car should be able to make one complete loop around the 6946m highway. Since the car is trying to go 50 MPH, it should take a little over 5 minutes to complete 1 loop. Also the car should not experience total acceleration over 10 m/s^2 and jerk that is greater than 10 m/s^3.
+<img src="./documentation/simulator.png" width="400">
+
 
 #### The map of the highway is in data/highway_map.txt
 Each waypoint in the list contains  [x,y,s,dx,dy] values. x and y are the waypoint's map coordinate position, the s value is the distance along the road to get to that waypoint in meters, the dx and dy values define the unit normal vector pointing outward of the highway loop.
 
 The highway's waypoints loop around so the frenet s value, distance along the road, goes from 0 to 6945.554.
 
-## Basic Build Instructions
+## Model
+For trajectory planning we use a combination of JMP and spline interpolations. To be more precise we use an overall spline interpolation (based on may waypoints) for driving in an lane. The lane changes are done by using jerk minimizing polynomials.
 
-1. Clone this repo.
-2. Make a build directory: `mkdir build && cd build`
-3. Compile: `cmake .. && make`
-4. Run it: `./path_planning`.
+Bahaviour planning is based on two cost functions:
 
-Here is the data provided from the Simulator to the C++ Program
+* inefficiency cost: this makes slow trajectories more expensive
+* safety cost: this mainly makes lane changes more expensive than keep the lane
 
-#### Main car's localization Data (No Noise)
+The next behaviour is thus planned based on the next (safe reachable) state with lowest cost.
 
-["x"] The car's x position in map coordinates
 
-["y"] The car's y position in map coordinates
 
-["s"] The car's s position in frenet coordinates
+## Implementation
 
-["d"] The car's d position in frenet coordinates
+the main method is `start_piloted_driving` in `Vehicle` class.
+This method calls two important methods in `Vehicle` class:
 
-["yaw"] The car's yaw angle in the map
+* `follow`: implemention to keep the current lane
+* `change_lane`: implemention to change lanes
 
-["speed"] The car's speed in MPH
+trajectory planning:
 
-#### Previous path data given to the Planner
+* `follow()`: compute trajectory to follow the current lane
+* `change_lane(string next_state)`: compute trajectory to change lane
+* `drive2(vector<double> speed, vector<double> d)`: generate trajectory based on speed and d
+* `compute_paramteters_JMP(start, end, T)`: compute parameters for jerk minimizing polynomial
+* `double eval_JMP( x, params)`: evaluate jerk minimizing polynomial
 
-//Note: Return the previous list but with processed points removed, can be a nice tool to show how far along
-the path has processed since last time. 
 
-["previous_path_x"] The previous list of x points previously given to the simulator
+behaviour planning:
 
-["previous_path_y"] The previous list of y points previously given to the simulator
+* `get_successor_states()`: get all (safe) reachable next states
+* `set_target_state(next states)`: set target state based on total cost
+* `inefficiency_cost()`: cost function inefficiency
+* `safety_cost()`: cost function safety
 
-#### Previous path's end s and d values 
-
-["end_path_s"] The previous list's last point's frenet s value
-
-["end_path_d"] The previous list's last point's frenet d value
-
-#### Sensor Fusion Data, a list of all other car's attributes on the same side of the road. (No Noise)
-
-["sensor_fusion"] A 2d vector of cars and then that car's [car's unique ID, car's x position in map coordinates, car's y position in map coordinates, car's x velocity in m/s, car's y velocity in m/s, car's s position in frenet coordinates, car's d position in frenet coordinates. 
-
-## Details
-
-1. The car uses a perfect controller and will visit every (x,y) point it recieves in the list every .02 seconds. The units for the (x,y) points are in meters and the spacing of the points determines the speed of the car. The vector going from a point to the next point in the list dictates the angle of the car. Acceleration both in the tangential and normal directions is measured along with the jerk, the rate of change of total Acceleration. The (x,y) point paths that the planner recieves should not have a total acceleration that goes over 10 m/s^2, also the jerk should not go over 50 m/s^3. (NOTE: As this is BETA, these requirements might change. Also currently jerk is over a .02 second interval, it would probably be better to average total acceleration over 1 second and measure jerk from that.
-
-2. There will be some latency between the simulator running and the path planner returning a path, with optimized code usually its not very long maybe just 1-3 time steps. During this delay the simulator will continue using points that it was last given, because of this its a good idea to store the last points you have used so you can have a smooth transition. previous_path_x, and previous_path_y can be helpful for this transition since they show the last points given to the simulator controller with the processed points already removed. You would either return a path that extends this previous path or make sure to create a new path that has a smooth transition with this last path.
 
 ## Discussion
 
 We used a approach to keep all as long a possible in frenet coordinates. 
-The nice thing here is to have a spline interpolation only once in initialization, see constructor of class `road`
+
+The nice thing here is to have a spline interpolation only once in initialization, see constructor of class `road`, i.e. the frenet coordinate `s` can be seen as the global time and we use therefore arclength parametrization.
+Therefore if we have a lot of waypoints the (cost expensive) computation (O(N)) of the spline is done only once. The lookup is of logarithmic complexity O(log(N)), see https://kluge.in-chemnitz.de/opensource/spline/ for more details.
 
 The problem here is, that it is very hard to control the speed. Therefore our car is limited to 47.
 If I increase this value, there might be a little peak where the speed is greater 50. 
 
-A idea to solve this problem is to calculate the curvature and take this into account.
+A idea to solve this problem is to calculate the curvature and take this into account. This is done in the method `curvature` in class `Vehicle`. In order to get a better speed approximation (even in curves with high curvature) this could be used as a balancing factor.
 
 ---
 
@@ -77,20 +76,6 @@ A idea to solve this problem is to calculate the curvature and take this into ac
 * cmake >= 3.5
   * All OSes: [click here for installation instructions](https://cmake.org/install/)
 * make >= 4.1
-  * Linux: make is installed by default on most Linux distros
-  * Mac: [install Xcode command line tools to get make](https://developer.apple.com/xcode/features/)
-  * Windows: [Click here for installation instructions](http://gnuwin32.sourceforge.net/packages/make.htm)
-* gcc/g++ >= 5.4
-  * Linux: gcc / g++ is installed by default on most Linux distros
-  * Mac: same deal as make - [install Xcode command line tools]((https://developer.apple.com/xcode/features/)
-  * Windows: recommend using [MinGW](http://www.mingw.org/)
-* [uWebSockets](https://github.com/uWebSockets/uWebSockets)
-  * Run either `install-mac.sh` or `install-ubuntu.sh`.
-  * If you install from source, checkout to commit `e94b6e1`, i.e.
-    ```
-    git clone https://github.com/uWebSockets/uWebSockets 
-    cd uWebSockets
-    git checkout e94b6e1
-    ```
+  
 
 

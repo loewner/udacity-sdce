@@ -18,9 +18,9 @@
 Vehicle::Vehicle(Road road){
 	this->road = road;
 	this->parameter_JMP.insert(make_pair(make_tuple(0,1), this->compute_paramteters_JMP({2,0,0},{6,0,0}, 50)));
-	this->parameter_JMP.insert(make_pair(make_tuple(1,2), this->compute_paramteters_JMP({6,0,0},{10,0,0}, 50)));
+	this->parameter_JMP.insert(make_pair(make_tuple(1,2), this->compute_paramteters_JMP({6,0,0},{9.8,0,0}, 50)));
 	this->parameter_JMP.insert(make_pair(make_tuple(1,0), this->compute_paramteters_JMP({6,0,0},{2,0,0}, 50)));
-	this->parameter_JMP.insert(make_pair(make_tuple(2,1), this->compute_paramteters_JMP({10,0,0},{6,0,0}, 50)));
+	this->parameter_JMP.insert(make_pair(make_tuple(2,1), this->compute_paramteters_JMP({9.8,0,0},{6,0,0}, 50)));
 }
 /**
  * Initializes target vehicle
@@ -154,7 +154,52 @@ void Vehicle::follow(){
 	for (int i = 0; i < 100; i++){
 		current_s = this->begin_path_s + double(i) /2.5 * double(target_speed)/45;
 		s.push_back(current_s);
-		d.push_back(2+this->get_lane()*4);
+		double lane;
+		if (2+this->get_lane()*4 <10){
+			lane = 2+this->get_lane()*4;
+		}
+		else{
+			lane = 9.8;
+		}
+		d.push_back(lane);
+	}
+	this->drive2(s, d);
+}
+
+void Vehicle::change_lane(string next_state){
+	// initialize lane change
+	if ( this->during_lane_change == false){
+		this->during_lane_change = true;
+		this->lange_change_start_s = this->begin_path_s;
+		this->lane_to_change = this->get_lane();
+		if (next_state == "LC"){
+			this->lange_change_state = "LC";
+			this->lange_change_orientation = -1;
+		}
+		else {
+			this->lange_change_state = "RC";
+			this->lange_change_orientation = 1;
+		}
+	}
+	vector<double> s;
+	vector<double> d;
+	for (int i = 0; i < 100; i++){
+		double current_s = this->begin_path_s + i /2.5 * double(this->target_speed)/45;
+		if ((current_s > this->lange_change_start_s) & (current_s <= this->lange_change_start_s + this->lange_change_length)){
+			d.push_back(this->eval_JMP(
+					current_s - this->lange_change_start_s,
+					this->parameter_JMP[make_tuple(this->lane_to_change, this->lane_to_change+this->lange_change_orientation)]));
+		}
+		if (current_s > this->lange_change_start_s + this->lange_change_length){
+			if (2 + 4* (this->lane_to_change + this->lange_change_orientation) < 10){
+				d.push_back( 2 + 4* (this->lane_to_change + this->lange_change_orientation));
+			}
+			else {
+				d.push_back(9.8);
+			}
+
+		}
+		s.push_back(current_s);
 	}
 	this->drive2(s, d);
 }
@@ -276,35 +321,7 @@ void Vehicle::start_piloted_driving(){
 		this->follow();
 	}
 	if ( (next_state == "LC") | (next_state == "RC") ){
-		// initialize lane change
-		if ( this->during_lane_change == false){
-			this->during_lane_change = true;
-			this->lange_change_start_s = this->begin_path_s;
-			this->lane_to_change = this->get_lane();
-			if (next_state == "LC"){
-				this->lange_change_state = "LC";
-				this->lange_change_orientation = -1;
-			}
-			else {
-				this->lange_change_state = "RC";
-				this->lange_change_orientation = 1;
-			}
-		}
-		vector<double> s;
-		vector<double> d;
-		for (int i = 0; i < 100; i++){
-			double current_s = this->begin_path_s + i /2.5 * double(this->target_speed)/45;
-			if ((current_s > this->lange_change_start_s) & (current_s <= this->lange_change_start_s + this->lange_change_length)){
-				d.push_back(this->eval_JMP(
-						current_s - this->lange_change_start_s,
-						this->parameter_JMP[make_tuple(this->lane_to_change, this->lane_to_change+this->lange_change_orientation)]));
-			}
-			if (current_s > this->lange_change_start_s + this->lange_change_length){
-				d.push_back( 2 + 4* (this->lane_to_change + this->lange_change_orientation));
-			}
-			s.push_back(current_s);
-		}
-		this->drive2(s, d);
+		this->change_lane(next_state);
 	}
 
 }
