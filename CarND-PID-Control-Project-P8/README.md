@@ -66,23 +66,31 @@ The reason for this, is that the coefficients are not comparable, so adding a co
 ### simulation results
 
 In our simulation we used a constant throttle value of 0.3.
-This allows the car to go around 35 mph in max.
+This allows the car to go around 30 mph in max.
 
 We used the twiddle method win coordinateAscent.ipynb with the following standard parameter:
 ```
 twiddle(start_p = [0.1, 0.001, 1.0], 
             start_dp = [1,1,1],
             standardization=[10,1000,1], 
-            tol=0.2): 
+            tol=0.02): 
 ```
 
 this leads us to the following parameters:
 
-* p=
-* i=
-* d=
+* p = 0.7036179727149754
+* i = 0.0059403436597860095 
+* d = 6.28598276810001
 
-TODO: VIDEO
+with a total sme (sqared-mean-error) of 0.07758.
+
+These pid values are quite large, so we will have a car that is not moving smooth:
+
+<video width="320" height="240" controls>
+  <source src="documentation/video-small.mp4" type="video/mp4">
+</video>
+
+
 
 
 ## Dependencies
