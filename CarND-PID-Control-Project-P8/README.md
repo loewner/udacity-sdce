@@ -65,8 +65,8 @@ The reason for this, is that the coefficients are not comparable, so adding a co
 
 ### simulation results
 
-In our simulation we used a constant throttle value of 0.6.
-This allows the car to go around 52 mph in max.
+In our simulation we used a constant throttle value of 0.3.
+This allows the car to go around 35 mph in max.
 
 We used the twiddle method win coordinateAscent.ipynb with the following standard parameter:
 ```
